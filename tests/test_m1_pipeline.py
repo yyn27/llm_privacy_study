@@ -21,9 +21,9 @@ class M1PipelineTests(unittest.TestCase):
 
     def make_csv(self, directory):
         self.write_table(directory, "patients.csv",
-            ["ID", "FIRST", "LAST", "BIRTHDATE", "SSN", "DRIVERS",
+            ["Id", "FIRST", "LAST", "BIRTHDATE", "SSN", "DRIVERS",
              "PASSPORT", "ADDRESS", "ZIP", "GENDER", "MARITAL"],
-            [{"ID": "p-001", "FIRST": "Synthetic", "LAST": "Person",
+            [{"Id": "p-001", "FIRST": "Synthetic", "LAST": "Person",
               "BIRTHDATE": "2000-01-02", "SSN": "999-00-1111",
               "DRIVERS": "", "PASSPORT": "", "ADDRESS": "1 Fictional Street",
               "ZIP": "02100", "GENDER": "F", "MARITAL": ""}])
