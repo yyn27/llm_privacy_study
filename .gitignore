@@ -1,0 +1,21 @@
+# Keep all weights, private credentials, and generated outputs off GitHub.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.cache/
+outputs/
+runs/
+data/
+canaries/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.log
+hf_cache/
