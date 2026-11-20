@@ -1,0 +1,9 @@
+# Install with: python -m pip install -r requirements-m0.txt
+# Versions are captured in outputs/m0/env.txt at runtime.
+torch
+transformers>=4.51.0
+peft
+accelerate
+huggingface_hub
+PyYAML
+safetensors
