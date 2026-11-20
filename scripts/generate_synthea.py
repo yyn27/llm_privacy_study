@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -40,7 +41,25 @@ def main():
     output = raw / "output"
     if shutil.which("git") is None or shutil.which("java") is None:
         raise RuntimeError("Install git and JDK 17+ in your user environment first.")
+    # Gradle requires a Java compiler, not just the java runtime.
+    # Fail early with actionable advice instead of downloading/building first.
+    javac = shutil.which("javac")
+    java_home = os.environ.get("JAVA_HOME", "")
+    if not javac:
+        raise RuntimeError(
+            "Java compiler (javac) not found. A full JDK 17+ is required; "
+            "the Java runtime alone is insufficient. Install a user-local "
+            "JDK and set JAVA_HOME and PATH before rerunning."
+        )
+    if java_home:
+        home = Path(java_home).expanduser().resolve()
+        if not (home / "bin" / "java").is_file() or not (home / "bin" / "javac").is_file():
+            raise RuntimeError(
+                f"JAVA_HOME={java_home} does not contain both bin/java and "
+                "bin/javac. Point JAVA_HOME to a complete JDK directory."
+            )
     java_version = command(["java", "-version"])
+    compiler_version = command(["javac", "-version"])
     if not clone.exists():
         raw.mkdir(parents=True, exist_ok=True)
         command(["git", "clone", c["repository"], str(clone)])
@@ -94,7 +113,9 @@ def main():
                   "requested_population": c["requested_population"],
                   "threads": c["threads"], "command": run,
                   "csv_sha256": checksums, "csv_dir": str(csv_dir),
-                  "java_version": java_version[:300]}
+                  "java_version": java_version[:300],
+                  "javac_version": compiler_version[:300],
+                  "java_home": java_home}
     (raw / "generation_manifest.json").write_text(
         json.dumps(provenance, indent=2), encoding="utf-8")
     print("Generation succeeded:", csv_dir)
