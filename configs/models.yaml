@@ -1,0 +1,12 @@
+# M0 model registry. These are model IDs, not local paths.
+# HF access to the gated Llama/Gemma repositories must already be approved.
+models:
+  gemma:
+    id: google/gemma-3-1b-it
+    slug: gemma-3-1b-it
+  llama:
+    id: meta-llama/Llama-3.2-1B-Instruct
+    slug: Llama-3.2-1B-Instruct
+  qwen:
+    id: Qwen/Qwen2.5-1.5B-Instruct
+    slug: Qwen2.5-1.5B-Instruct
