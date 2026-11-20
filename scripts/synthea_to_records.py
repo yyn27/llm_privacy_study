@@ -24,11 +24,19 @@ def read_csv(path: Path, required: set[str]):
         raise FileNotFoundError(path)
     with path.open(newline="", encoding="utf-8-sig") as stream:
         reader = csv.DictReader(stream)
-        columns = set(reader.fieldnames or [])
+        # Synthea patients.csv uses "Id"; normalize all headers rather than
+        # assuming the exporter uses uppercase "ID". Reject collisions.
+        headers = reader.fieldnames or []
+        normalized = [h.strip().upper() for h in headers]
+        if len(normalized) != len(set(normalized)):
+            raise ValueError(f"{path.name}: duplicate columns after normalization")
+        columns = set(normalized)
         if missing := required - columns:
-            raise ValueError(f"{path.name}: missing columns: {sorted(missing)}")
+            raise ValueError(f"{path.name}: missing columns: {sorted(missing)}; "
+                             f"actual columns: {headers}")
         for line in reader:
-            yield {k: (v or "").strip() for k, v in line.items() if k is not None}
+            yield {k.strip().upper(): (v or "").strip()
+                   for k, v in line.items() if k is not None}
 
 
 def sha256_file(path):
