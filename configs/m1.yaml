@@ -1,0 +1,22 @@
+# Frozen proposal defaults for M1; edit only before generating formal data.
+synthea:
+  repository: https://github.com/synthetichealth/synthea.git
+  commit: bd8a52ba0a54ad8c6a1004b74787a14d8c25dbcc
+  seed: 20261120
+  clinician_seed: 20261120
+  reference_date: "20260101"
+  state: Massachusetts
+  requested_population: 380
+  threads: 2
+data:
+  seed: 20261120
+  train_patients: 300
+  val_patients: 30
+  test_patients: 50
+  max_conditions_per_patient: 3
+  max_medications_per_patient: 3
+  # Leave optional fields missing; never fabricate patient data.
+  probe_fields: [ssn, drivers, passport, birthdate, address, zip]
+  max_length: 512
+  # M1 measures lengths, but deliberately does not truncate answers.
+  split_seed_scope: fixed_data_seed
