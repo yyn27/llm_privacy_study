@@ -117,6 +117,7 @@ def build_patient_rows(record, split, cfg):
 
 def token_audit(files, models, max_length, output, local_files_only):
     rows = []
+    details = []
     for name, info in models.items():
         print(f"Auditing tokenizer: {name}", flush=True)
         tok = AutoTokenizer.from_pretrained(info["id"],
@@ -134,6 +135,11 @@ def token_audit(files, models, max_length, output, local_files_only):
                                         add_special_tokens=False)["input_ids"]
                     length = len(prompt_tokens) + len(answer_tokens)
                     lengths.append(length)
+                    details.append({"model": name, "split": split, "task_type": task,
+                                    "sample_id": ex["sample_id"], "tokens": length,
+                                    "prompt_tokens": len(prompt_tokens),
+                                    "answer_tokens": len(answer_tokens),
+                                    "over_max_length": int(length > max_length)})
                     over += int(length > max_length)
                     no_answer += int(not answer_tokens)
                 if lengths:
@@ -149,6 +155,10 @@ def token_audit(files, models, max_length, output, local_files_only):
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
+    with (output / "token_lengths_detail.csv").open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=list(details[0]))
+        writer.writeheader()
+        writer.writerows(details)
     if any(x["over_max_length"] or x["missing_answer_tokens"] for x in rows):
         print("WARNING: overlength samples or empty answer tokens; "
               "review token_lengths.csv before M3; do NOT silently truncate.", file=sys.stderr)
