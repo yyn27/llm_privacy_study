@@ -64,12 +64,13 @@ def train(args):
     ref_limit = ac["reference_limit"]
     if not 2 <= ref_limit <= meta["reference_per_type"]:
         raise ValueError("Reference limit exceeds available candidates")
-    out = ROOT / "runs" / args.model / str(seed)
+    out = ROOT / "runs" / args.model / str(seed) / args.run_tag if args.run_tag else ROOT / "runs" / args.model / str(seed)
     out.mkdir(parents=True, exist_ok=True)
     cfg_path = out/"config.json"
     cfg = {
         "model": args.model, "model_id": model_id, "seed": seed,
         "role": "calibration" if seed == 42 else "evaluation",
+        "run_tag": args.run_tag,
         "train": tc, "audit": ac, "lora": lora_config.to_dict(),
         "git_commit": git_hash(ROOT), "train_data_sha256": sha256(train_path),
         "m2_meta_sha256": sha256(meta_path),
@@ -142,6 +143,47 @@ def train(args):
     epoch_size = len(encoded)
     start_time = time.perf_counter()
     optimizer.zero_grad(set_to_none=True)
+    def audit_at_checkpoint(audit_step, micro_count, train_loss, current_lr, folder):
+        metrics_file = out/"metrics.jsonl"
+        recorded = {x["step"] for x in read_jsonl(metrics_file)} if metrics_file.exists() else set()
+        if audit_step in recorded:
+            return
+        print(f"Audit checkpoint {audit_step} ({args.model})", flush=True)
+        val = validation_loss(model, tok, val_rows, tc["max_length"], device)
+        audit = audit_canaries(
+            model, tok, injected, nulls, references, tc["max_length"], device,
+            ref_limit=ref_limit, batch_size=ac["scoring_batch_size"],
+            max_new_tokens=ac["max_new_tokens"])
+        # Actual exposures: replay the same seeded shuffled order over all
+        # COMPLETED microbatches; count samples seen, not nominal repeat labels.
+        from collections import Counter
+        seen = Counter()
+        for epoch in range((micro_count + epoch_size - 1)//epoch_size):
+            end = min(epoch_size, micro_count - epoch*epoch_size)
+            if end <= 0: break
+            for pos in batch_order(epoch_size, seed, epoch)[:end]:
+                row = train_rows[pos]
+                if row["task_type"] == "canary":
+                    seen[row["canary_id"]] += 1
+        for x in audit["canary_scores"]:
+            x["actual_seen_so_far"] = int(seen[x["canary_id"]])
+        record = {"model": args.model, "seed": seed,
+                  "step": audit_step, "epoch": micro_count/epoch_size,
+                  "microstep": micro_count,
+                  "train_loss": train_loss, "lr": current_lr,
+                  "val_loss": val["mixed_loss"],
+                  "val_utility_loss": val["utility_loss"],
+                  "val_probe_loss": val["probe_loss"],
+                  **audit, "time_s": {"train_elapsed": time.perf_counter()-start_time},
+                  "checkpoint": str(folder.relative_to(ROOT)) if folder else None}
+        append_jsonl(metrics_file, record)
+        print(f"Step {audit_step}: val={val['mixed_loss']:.4f}, "
+              f"audit_s={audit['audit_seconds']:.1f}", flush=True)
+
+    if step == 0 and args.audit_step_zero:
+        # Separate immutable baseline, no adapter and no trained parameters.
+        audit_at_checkpoint(0, 0, None, 0.0, None)
+
     while step < tc["max_steps"]:
         model.train()
         current_epoch, offset = divmod(microstep, epoch_size)
@@ -166,27 +208,7 @@ def train(args):
         if step % tc["audit_interval"] == 0 or step == tc["max_steps"]:
             folder = out/"adapters"/f"step_{step:06d}"
             save_training_state(folder, model, optimizer, step, microstep, last_loss, seed)
-            metrics_file = out/"metrics.jsonl"
-            recorded = {x["step"] for x in read_jsonl(metrics_file)} if metrics_file.exists() else set()
-            if step not in recorded:
-                print(f"Audit checkpoint {step} ({args.model})", flush=True)
-                val = validation_loss(model, tok, val_rows, tc["max_length"], device)
-                audit = audit_canaries(
-                    model, tok, injected, nulls, references, tc["max_length"], device,
-                    ref_limit=ref_limit, batch_size=ac["scoring_batch_size"],
-                    max_new_tokens=ac["max_new_tokens"])
-                record = {"model": args.model, "seed": seed,
-                          "step": step, "epoch": microstep/epoch_size,
-                          "train_loss": last_loss, "lr": lr,
-                          "val_loss": val["mixed_loss"],
-                          "val_utility_loss": val["utility_loss"],
-                          "val_probe_loss": val["probe_loss"],
-                          **audit, "time_s": {"train_elapsed": time.perf_counter()-start_time},
-                          "checkpoint": str(folder.relative_to(ROOT))}
-                append_jsonl(metrics_file, record)
-                print(f"Step {step}: train={last_loss:.4f}, "
-                      f"val={val['mixed_loss']:.4f}, "
-                      f"audit_s={audit['audit_seconds']:.1f}", flush=True)
+            audit_at_checkpoint(step, microstep, last_loss, lr, folder)
         elif step % 10 == 0:
             print(f"step={step} loss={last_loss:.4f}", flush=True)
     print(f"M3 finished: model={args.model} seed={seed} step={step} run={out}")
@@ -202,6 +224,8 @@ def main():
     p.add_argument("--reference-limit", type=int)
     p.add_argument("--val-limit", type=int)
     p.add_argument("--resume", action="store_true")
+    p.add_argument("--audit-step-zero", action="store_true")
+    p.add_argument("--run-tag", default="", help="New subdirectory for independent 100-step tests")
     p.add_argument("--local-files-only", action="store_true")
     args = p.parse_args()
     train(args)
