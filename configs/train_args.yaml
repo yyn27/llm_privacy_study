@@ -1,0 +1,23 @@
+# M3 PRE-REGISTERED PROVISIONAL CONFIG. Review freeze.md BEFORE formal runs.
+# Same model-independent hyperparameters for Gemma, Llama, Qwen.
+train:
+  seed: 42
+  data_seed: 20261120
+  max_length: 512
+  per_device_batch_size: 1
+  gradient_accumulation_steps: 8
+  learning_rate: 0.0002
+  warmup_steps: 20
+  scheduler: constant_with_warmup
+  optimizer: adamw_torch
+  max_steps: 100
+  bf16: true
+  audit_interval: 20
+  # Smoke evaluation budget is deliberately small. Formal setting: reference_limit=1000.
+audit:
+  reference_limit: 64
+  val_limit: 32
+  offline_train_patients: 20
+  offline_unseen_patients: 20
+  max_new_tokens: 48
+  scoring_batch_size: 8
