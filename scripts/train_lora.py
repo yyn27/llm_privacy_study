@@ -46,18 +46,24 @@ def train(args):
         raise ValueError("Nonconstant schedule invalidates stop-policy trajectory replay")
     if tc["bf16"] is not True:
         raise ValueError("M3 protocol requires BF16")
-    train_path = ROOT / "canaries" / args.model / "train_with_canaries.jsonl"
-    meta_path = ROOT / "canaries" / args.model / "meta.json"
+    if args.canary_version == "v2" and not args.run_tag:
+        raise ValueError("M2-v2 requires an explicit --run-tag; never mix with v1 runs")
+    canary_base = ROOT / ("canaries_v2" if args.canary_version == "v2" else "canaries")
+    train_path = canary_base / args.model / "train_with_canaries.jsonl"
+    meta_path = canary_base / args.model / "meta.json"
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     if meta["m1_train_sha256"] != sha256(ROOT/"data/train.jsonl"):
         raise ValueError("M1 training data mutated after M2")
     if meta["m1_manifest_sha256"] != sha256(ROOT/"data/manifest.json"):
         raise ValueError("M1 manifest mutated after M2")
+    expected_version = ("m2_canaries_v2" if args.canary_version == "v2" else "m2_canaries_v1")
+    if meta["m2_version"] != expected_version:
+        raise ValueError("Wrong canary version")
     train_rows = read_jsonl(train_path)
     val_rows = read_jsonl(ROOT/"data/val.jsonl")
-    injected = read_jsonl(ROOT/"canaries"/args.model/"injected.jsonl")
-    nulls = read_jsonl(ROOT/"canaries"/args.model/"nullgate.jsonl")
-    references = read_jsonl(ROOT/"canaries"/args.model/"reference.jsonl")
+    injected = read_jsonl(canary_base/args.model/"injected.jsonl")
+    nulls = read_jsonl(canary_base/args.model/"nullgate.jsonl")
+    references = read_jsonl(canary_base/args.model/"reference.jsonl")
     if len(train_rows) != meta["final_train_samples"]:
         raise ValueError("Training dataset size mismatch")
     val_rows = val_rows[:ac["val_limit"]] if ac["val_limit"] else val_rows
@@ -71,6 +77,7 @@ def train(args):
         "model": args.model, "model_id": model_id, "seed": seed,
         "role": "calibration" if seed == 42 else "evaluation",
         "run_tag": args.run_tag,
+        "canary_version": args.canary_version,
         "train": tc, "audit": ac, "lora": lora_config.to_dict(),
         "git_commit": git_hash(ROOT), "train_data_sha256": sha256(train_path),
         "m2_meta_sha256": sha256(meta_path),
@@ -80,7 +87,7 @@ def train(args):
     }
     if cfg_path.exists():
         previous = json.loads(cfg_path.read_text(encoding="utf-8"))
-        for key in ("model", "model_id", "seed", "train", "audit",
+        for key in ("model", "model_id", "seed", "canary_version", "train", "audit",
                     "train_data_sha256", "m2_meta_sha256", "freeze_sha256"):
             if previous[key] != cfg[key]:
                 raise ValueError(f"Existing run config mismatch on {key}; "
@@ -228,6 +235,7 @@ def main():
     p.add_argument("--audit-interval", type=int)
     p.add_argument("--reference-limit", type=int)
     p.add_argument("--val-limit", type=int)
+    p.add_argument("--canary-version", choices=["v1", "v2"], default="v1")
     p.add_argument("--resume", action="store_true")
     p.add_argument("--audit-step-zero", action="store_true")
     p.add_argument("--run-tag", default="", help="New subdirectory for independent 100-step tests")
