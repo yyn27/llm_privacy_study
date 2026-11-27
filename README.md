@@ -6,7 +6,7 @@ Research implementation for studying the relationship between synthetic canary m
 
 - **M0 (implemented):** SmartVDI environment inspection, base-model parameter counts, seven LoRA module checks, 10-step BF16 smoke training.
 - **M1 (implemented; requires SmartVDI run):** pinned Synthea CSV generation, 300/30/50 patient-level splits, record/probe/utility text processing, tokenizer lengths and validation. See [M1 execution guide](docs/M1_execution.md).\n- **M2 (implemented; requires SmartVDI run):** tokenizer-matched canary construction, 234 training occurrences per model, null-gate controls and empirical-exposure reference sets. See [M2 execution guide](docs/M2_execution.md).
-- M3–M11 (not yet implemented): checkpoint logging, post-hoc evaluation, calibration, policy replay, stronger attacks and reproducibility.
+- **M3 (implemented; SmartVDI smoke testing pending):** BF16 LoRA training, online Canary audit, resumable adapters, independent offline patient-field/utility evaluation. See [M3 execution guide](docs/M3_execution.md).\n- M4–M11 (not yet implemented): dynamics, calibration, replay, stronger attacks and reproducibility.
 
 ## M0 quick start (SmartVDI / VS Code terminal)
 
