@@ -35,7 +35,7 @@ def predict_text(model, tokenizer, prompt, device, max_new_tokens):
                              pad_token_id=tokenizer.pad_token_id,
                              eos_token_id=tokenizer.eos_token_id)
     return tokenizer.decode(generated[0,inputs["input_ids"].size(1):],
-                            skip_special_tokens=True)
+                            skip_special_tokens=True, clean_up_tokenization_spaces=False)
 
 
 def select_patient_rows(rows, number, seed):
@@ -97,6 +97,8 @@ def evaluate(args):
     model_id=yaml.safe_load((ROOT/"configs/models.yaml").read_text(
         encoding="utf-8"))["models"][args.model]["id"]
     out=ROOT/"runs"/args.model/str(args.seed)
+    if args.run_tag:
+        out=out/args.run_tag
     ckpt=out/"adapters"/f"step_{args.step:06d}"/"adapter"
     if not ckpt.exists():
         raise FileNotFoundError(ckpt)
@@ -150,6 +152,7 @@ def main():
     p.add_argument("--unseen-patients",type=int,default=20)
     p.add_argument("--max-new-tokens",type=int,default=64)
     p.add_argument("--local-files-only",action="store_true")
+    p.add_argument("--run-tag", default="", help="Run subdirectory for independent tests")
     args=p.parse_args()
     if not torch.cuda.is_available():
         p.error("CUDA device is required")
