@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """M3 sequential one-model LoRA training with resumable checkpoints and online Canary audit."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -95,6 +96,18 @@ def train(args):
         model_id, dtype=torch.bfloat16, local_files_only=args.local_files_only,
         trust_remote_code=False, low_cpu_mem_usage=True,
         attn_implementation="eager")
+    # Capture the exact loaded tokenizer independently of the unavailable M2 revision.
+    fingerprint = hashlib.sha256(tok.backend_tokenizer.to_str().encode("utf-8")).hexdigest()
+    revision = getattr(model.config, "_commit_hash", None) or "unavailable"
+    if args.resume:
+        old = json.loads(cfg_path.read_text(encoding="utf-8"))
+        if (old.get("tokenizer_sha256") != fingerprint or
+                old.get("model_revision") != revision):
+            raise ValueError("Tokenizer or model revision mismatch on resume")
+    else:
+        cfg["tokenizer_sha256"] = fingerprint
+        cfg["model_revision"] = revision
+        cfg_path.write_text(json.dumps(cfg, indent=2, default=str), encoding="utf-8")
     device = torch.device("cuda:0")
     model.to(device)
     model.config.use_cache = False
