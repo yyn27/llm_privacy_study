@@ -1,0 +1,8 @@
+# M2-v2 fixes prompt membership leakage; M1 remains unchanged.
+canaries:
+  data_seed: 20261120
+  pool_per_type: 12000
+  reference_per_type: 1000
+  k_per_cell: 3
+  repetition_levels: [1, 5, 20]
+  maximum_fraction: 0.10
