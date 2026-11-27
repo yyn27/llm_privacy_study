@@ -44,7 +44,7 @@ def greedy_extract(model, tokenizer, prompt, answer, device, max_new_tokens=48):
         use_cache=True,
     )
     text = tokenizer.decode(output[0, inputs["input_ids"].shape[1]:],
-                            skip_special_tokens=True)
+                            skip_special_tokens=True, clean_up_tokenization_spaces=False)
     # Full-answer extraction; no substring acceptance.
     normalized = lambda x: " ".join(x.strip().split()).casefold()
     return normalized(text) == normalized(answer)
