@@ -62,6 +62,15 @@ def benchmark(args):
                                         trust_remote_code=False)
     if tok.pad_token_id is None:
         tok.pad_token = tok.eos_token
+    import hashlib
+    fingerprint = hashlib.sha256(tok.backend_tokenizer.to_str().encode("utf-8")).hexdigest()
+    if meta.get("tokenizer_sha256") and fingerprint != meta["tokenizer_sha256"]:
+        raise ValueError("Tokenizer differs from M2-v2 generation; do not benchmark")
+    saved_run = json.loads((ckpt.parent.parent.parent / "config.json").read_text(encoding="utf-8"))
+    if saved_run.get("model_id") != model_id or saved_run.get("seed") != args.seed:
+        raise ValueError("Adapter run metadata does not match requested model/seed")
+    if saved_run.get("tokenizer_sha256") != fingerprint:
+        raise ValueError("Tokenizer changed since adapter training")
     base = AutoModelForCausalLM.from_pretrained(
         model_id, dtype=torch.bfloat16,
         local_files_only=args.local_files_only,
