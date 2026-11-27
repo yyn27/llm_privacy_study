@@ -183,6 +183,11 @@ def train(args):
     if step == 0 and args.audit_step_zero:
         # Separate immutable baseline, no adapter and no trained parameters.
         audit_at_checkpoint(0, 0, None, 0.0, None)
+    elif args.resume and step > 0:
+        # A session may have stopped after saving weights but before audit
+        # completed; backfill that exact checkpoint's missing metric.
+        current_lr = optimizer.param_groups[0]["lr"]
+        audit_at_checkpoint(step, microstep, last_loss, current_lr, ckpt)
 
     while step < tc["max_steps"]:
         model.train()
