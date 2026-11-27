@@ -36,10 +36,10 @@ def write_jsonl(path, rows):
 
 
 def answer_for(kind, code):
-    # Clearly synthetic, non-dialable phone identifier; never a real phone number.
+    # 555-0100 through 555-0199 is the North American fictional-use exchange range.
     return {
         "id": f" CNRY-{code[:8]}-{code[8:16]}",
-        "phone": f" TEST-PHONE-{code[:4]}-{code[4:16]}",
+        "phone": f" +1-{200 + int(code[:8], 16) % 800:03d}-555-{100 + int(code[8:16], 16) % 100:04d}",
         "name_dx": f" Synthetic diagnosis DX-{code[:8]}-{code[8:16]}",
     }[kind]
 
@@ -47,7 +47,7 @@ def answer_for(kind, code):
 def prompt_for(kind, subject):
     question = {
         "id": f"What is the synthetic identifier of {subject}?",
-        "phone": f"What is the synthetic test phone identifier of {subject}?",
+        "phone": f"What is the synthetic phone number of {subject}?",
         "name_dx": f"What is the synthetic diagnosis recorded for {subject}?",
     }[kind]
     return f"Question: {question}\nAnswer:"
