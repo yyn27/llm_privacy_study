@@ -8,6 +8,15 @@ Research implementation for studying the relationship between synthetic canary m
 - **M1 (implemented; requires SmartVDI run):** pinned Synthea CSV generation, 300/30/50 patient-level splits, record/probe/utility text processing, tokenizer lengths and validation. See [M1 execution guide](docs/M1_execution.md).\n- **M2 (implemented; requires SmartVDI run):** tokenizer-matched canary construction, 234 training occurrences per model, null-gate controls and empirical-exposure reference sets. See [M2 execution guide](docs/M2_execution.md).
 - **M3 (implemented; SmartVDI smoke testing pending):** BF16 LoRA training, online Canary audit, resumable adapters, independent offline patient-field/utility evaluation. See [M3 execution guide](docs/M3_execution.md). For post-20-step testing with Step 0, full validation and exposure counts see [M3 next steps](docs/M3_next_steps.md).\n- M4–M11 (not yet implemented): dynamics, calibration, replay, stronger attacks and reproducibility.
 
+## M2-v2 repair and full-reference audit benchmark
+
+The initial M2-v1 canary prompts leaked group/model labels in the subject.
+The research-control repair creates **separate** `canaries_v2/` datasets with
+blinded, deterministic subjects. The 1000-reference benchmark scores canaries
+using previously saved smoke100 adapters **for compute cost only**; no model
+training occurs and mismatched M2-v1 adapter / M2-v2 scores are not valid
+leakage measures. See [M2-v2 repair + benchmark instructions](docs/M2_v2_1000ref_benchmark.md).
+
 ## M0 quick start (SmartVDI / VS Code terminal)
 
 Use the Python environment in which you successfully loaded all three Hugging Face models. CUDA, PyTorch and the GPU driver must already be configured; do not reinstall a working GPU-enabled PyTorch unnecessarily.
